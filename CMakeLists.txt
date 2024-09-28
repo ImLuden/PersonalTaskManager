@@ -8,6 +8,8 @@ add_executable(${PROJECT_NAME} src/main.cpp)
 add_subdirectory(external/fmt)
 target_link_libraries(${PROJECT_NAME} fmt::fmt) 
 
+add_subdirectory(external/json)
+target_link_libraries(${PROJECT_NAME} json) 
 
 
 
