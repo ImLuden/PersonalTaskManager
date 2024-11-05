@@ -1,27 +1,26 @@
-cmake_minimum_required(VERSION 3.30.2 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.30 FATAL_ERROR)
+
+
+# Указываем путь к toolchain-файлу vcpkg
+set(CMAKE_TOOLCHAIN_FILE "F:/vcpkg/scripts/buildsystems/vcpkg.cmake")
 
 set(PROJECT_NAME PersonalTaskManager)
 project(${PROJECT_NAME})
 
-add_executable(${PROJECT_NAME} src/main.cpp)
+add_executable(${PROJECT_NAME} src/main.cpp  src/task_manager.cpp  src/task_manager.h)
 
 add_subdirectory(external/fmt)
-target_link_libraries(${PROJECT_NAME} fmt::fmt) 
+target_link_libraries(${PROJECT_NAME} PRIVATE fmt::fmt)
 
-add_subdirectory(external/json)
-target_link_libraries(${PROJECT_NAME} json) 
 
-# Указываем исходные файлы SQLite
-set(SQLITE_SRC ${PROJECT_SOURCE_DIR}/external/sqlite/sqlite3.c)
 
-# Добавляем библиотеку из исходников
-add_library(sqlite3 STATIC external/sqlite)
+# Добавляем SQLite в проект
+find_package(unofficial-sqlite3 CONFIG REQUIRED)
+target_link_libraries(${PROJECT_NAME} PRIVATE unofficial::sqlite3::sqlite3)
 
-# Добавляем исполняемый файл
-add_executable(task_manager src/main.cpp src/sqlite_handler.cpp)
+find_package(nlohmann_json CONFIG REQUIRED)
+target_link_libraries(${PROJECT_NAME} PRIVATE nlohmann_json::nlohmann_json)
 
-# Линкуем SQLite
-target_link_libraries(task_manager PRIVATE sqlite)
 
 
 
