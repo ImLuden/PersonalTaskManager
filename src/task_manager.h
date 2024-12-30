@@ -95,7 +95,7 @@ private:
     std::vector<Task> tasks; // Stores all tasks in memory for quick access and manipulation
     std::string db_file; // Path to the JSON file storing task data   
 
-    //bool go_back(const std::string& input, const std::string& prompt);
+    bool go_back(std::string& input, const std::string& prompt);
 
     // Loads tasks from a JSON database file into memory (called in the constructor).
     void load_tasks();
@@ -121,7 +121,7 @@ private:
 
     std::string get_and_update_input(const std::string& prompt, const std::string& current_value);
 
-
+    
 
 
 
