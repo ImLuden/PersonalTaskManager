@@ -60,7 +60,7 @@ bool ask_back_to_menu(const std::string& prompt)
         std::cin >> user_input;
 
         // Convert input to lowercase to handle case-insensitive input
-        user_input = toLowerCase(user_input);
+        user_input = toLowerAndTrim(user_input);
 
         if (user_input == "yes")
         {
@@ -95,7 +95,7 @@ int main()
         int choice;
         std::cin >> choice;
 
-        // œÓ‚ÂÍ‡ Ó¯Ë·ÍË ‚‚Ó‰‡
+        // √è√∞√Æ√¢√•√∞√™√† √Æ√∏√®√°√™√® √¢√¢√Æ√§√†
         if (std::cin.fail())
         {
             std::cin.clear();
@@ -161,4 +161,4 @@ int main()
     }
     return 0;
 
-}
+}                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   

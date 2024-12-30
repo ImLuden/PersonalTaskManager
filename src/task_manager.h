@@ -12,9 +12,8 @@
 #include <fstream>
 #include <regex> // For regex validation (Date format to DD/MM/YYYY)
 
-std::string toLowerCase(const std::string& str);
-bool go_back(std::string& input, const std::string& prompt);
-std::string trim(const std::string& str);
+// Helper function to trim (to avoid spaces) and convert a string to lowercase
+std::string toLowerAndTrim(const std::string& str);
 
 // Enum that defines the task status. 
 // Pending - task is newly created; Completed - task was marked as done by user; Expired - due date passed without completion.
@@ -25,7 +24,7 @@ enum class TaskStatus { Pending, Completed, Expired };
 struct Task 
 
 {
-    int id;
+    int id = 0;
     std::string title;
     std::string description;
     std::string due_date; // Date format DD/MM/YY as a simple string
@@ -56,14 +55,15 @@ public:
     // Destructor that cleans up resources (if any), primarily here for completeness.
     ~TaskManager();
 
-    // Checks if database file exists, if not creates one
-    void initialize_database(const std::string& db_file);
-
-    // Function to display the main menu options to the user
-    void display_menu();
+    void run();
 
     // Greeting of the program
     void display_greeting();
+    
+    // Function to display the main menu options to the user
+    void display_menu();
+
+    bool ask_back_to_menu(const std::string& prompt);
 
     // Function to display all tasks
     void display_tasks();
@@ -93,7 +93,9 @@ public:
 
 private:
     std::vector<Task> tasks; // Stores all tasks in memory for quick access and manipulation
-    std::string db_file; // Path to the JSON file storing task data    
+    std::string db_file; // Path to the JSON file storing task data   
+
+    //bool go_back(const std::string& input, const std::string& prompt);
 
     // Loads tasks from a JSON database file into memory (called in the constructor).
     void load_tasks();
@@ -107,9 +109,6 @@ private:
     // Helper function to get the current date.
     std::string get_current_date() const;
 
-    // Helper function to return the size of array
-    int get_task_count() const;
-
     // Helper function get a task number in vector 
     Task& get_task_by_number(int task_number) ;
 
@@ -121,6 +120,7 @@ private:
     TaskStatus get_and_update_status();
 
     std::string get_and_update_input(const std::string& prompt, const std::string& current_value);
+
 
 
 
