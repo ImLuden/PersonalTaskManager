@@ -15,6 +15,7 @@
 // Helper function to trim (to avoid spaces) and convert a string to lowercase
 std::string toLowerAndTrim(const std::string& str);
 
+
 // Enum that defines the task status. 
 // Pending - task is newly created; Completed - task was marked as done by user; Expired - due date passed without completion.
 enum class TaskStatus { Pending, Completed, Expired };
@@ -48,22 +49,26 @@ class TaskManager
 {
 public:
 
-
     // Constructor with a database file path. This opens the file and loads any previously saved tasks.
     TaskManager(const std::string& db_file);
 
     // Destructor that cleans up resources (if any), primarily here for completeness.
     ~TaskManager();
 
+    // Helper function to clear input stream
+    void clear_input();
+
+    // Helper function to go back
+    bool ask_back_to_menu(const std::string& prompt);
+
+    // Run a manager from main
     void run();
 
     // Greeting of the program
     void display_greeting();
     
     // Function to display the main menu options to the user
-    void display_menu();
-
-    bool ask_back_to_menu(const std::string& prompt);
+    void display_menu();    
 
     // Function to display all tasks
     void display_tasks();
@@ -95,7 +100,7 @@ private:
     std::vector<Task> tasks; // Stores all tasks in memory for quick access and manipulation
     std::string db_file; // Path to the JSON file storing task data   
 
-    bool go_back(std::string& input, const std::string& prompt);
+    bool go_back(const std::string& input, const std::string& prompt);
 
     // Loads tasks from a JSON database file into memory (called in the constructor).
     void load_tasks();
@@ -115,15 +120,17 @@ private:
     // Validates date type (should be DD/MM/YYYY)
     std::string normalize_date(const std::string& input_date) const;
 
+    // Validates input 
+
+    std::string get_valid_input(const std::string& prompt);
+
+    // Validates date and its timeline
+
     std::string get_and_validate_due_date();
 
-    TaskStatus get_and_update_status();
+    TaskStatus get_and_update_status(const std::string& prompt, const std::string& current_value);
 
     std::string get_and_update_input(const std::string& prompt, const std::string& current_value);
-
-    
-
-
 
 };
 

@@ -1,14 +1,12 @@
 #include "task_manager.h"
 
-// Constructor initializes TaskManager with the given database file path, loads existing tasks, loads greeting message and checks if any tasks need status updates.
-// Then it displays all previously created tasks
+
+// Constructor initializes TaskManager with the given database file path, loads existing tasks and checks if any tasks need status updates.
+
 TaskManager::TaskManager(const std::string& db_file) : db_file(db_file) 
-{
-    
+{    
     load_tasks();          // Load tasks from file (JSON format)
-    display_greeting();
     update_task_status();   // Update task statuses based on due dates
-    display_tasks();
 }
 
 TaskManager::~TaskManager() 
@@ -16,6 +14,242 @@ TaskManager::~TaskManager()
     // Empty destructor, no specific cleanup required.
 }
 
+
+void TaskManager::clear_input() 
+{
+
+    std::cin.clear();
+    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+}
+
+// Helper function to trim and convert a string to lowercase
+std::string toLowerAndTrim(const std::string& str)
+{
+    // Find the first and last non-whitespace characters
+    size_t start = str.find_first_not_of(" \t");
+    size_t end = str.find_last_not_of(" \t");
+
+    // If the string is entirely whitespace, return an empty string
+    if (start == std::string::npos)
+    {
+        return "";
+    }
+
+    // Create a trimmed substring
+    std::string trimmed = str.substr(start, end - start + 1);
+
+    // Convert to lowercase
+    std::transform(trimmed.begin(), trimmed.end(), trimmed.begin(), ::tolower);
+
+    return trimmed;
+}
+
+ 
+void TaskManager::run()
+{
+    bool running = true;
+
+    display_greeting();
+    display_tasks();
+
+    while (running)
+    {
+        display_menu();
+
+        std::string input;
+        std::cout << "Choose an option: ";
+        input = get_valid_input("");
+
+        try
+        {
+            // Convert the input to an integer
+            int choice = std::stoi(input);
+
+            switch (choice)
+            {
+            case 1:
+                display_tasks();
+                continue;
+            case 2:
+                if (!ask_back_to_menu("Do you want to add a new task? "))
+                    add_new_task();
+                continue;
+            case 3:
+                if (!ask_back_to_menu("Do you want to update all task statuses? "))
+                    update_task_status();
+                continue;
+            case 4:
+                if (!ask_back_to_menu("Do you want to change task status? "))
+                    change_task_status();
+                continue;
+            case 5:
+                if (!ask_back_to_menu("Do you want to edit task parameters by its number? "))
+                    edit_task();
+                continue;
+            case 6:
+                if (!ask_back_to_menu("Do you want to delete a task by its number? "))
+                    delete_task();
+                continue;
+            case 7:
+                if (!ask_back_to_menu("Do you want to delete all tasks? "))
+                    delete_all_tasks();
+                continue;
+            case 8:
+                if (!ask_back_to_menu("Do you want to exit the program? "))
+                {
+                    running = false;
+                    std::cout << "Exiting Personal Task Manager. Goodbye!\n";
+                }
+                return;
+            default:
+                std::cerr << "Invalid input. Please enter a number from the menu.\n";
+                continue;
+            }
+        }
+        catch (const std::exception&)
+        {
+            std::cerr << "Invalid input. Please enter a valid number.\n";
+        }
+    }
+}
+
+
+// Display the greeting message and current date
+void TaskManager::display_greeting()
+{
+    std::cout << "Hello, I'm your Personal Task Manager." << std::endl;
+    std::cout << "Today's date: " << get_current_date() << std::endl;
+    std::cout << "Welcome!\n";
+}
+
+void TaskManager::display_menu()
+{
+
+    std::cout << "\n===== Task Manager Menu =====\n";
+    std::cout << "1. Display all tasks\n";
+    std::cout << "2. Add a new task\n";
+    std::cout << "3. Update task statuses\n";
+    std::cout << "4. Change task's status\n";
+    std::cout << "5. Edit task \n";
+    std::cout << "6. Delete task by its number\n";
+    std::cout << "7. Delete all tasks\n";
+    std::cout << "8. Exit\n";
+    std::cout << "=============================\n";
+
+}
+
+
+void TaskManager::display_tasks()
+{
+    std::cout << "Here are your tasks:\n" << std::endl;
+
+    // Check if there are any tasks
+    if (tasks.empty())
+    {
+        std::string user_answer;
+        std::cout << "No tasks available. Would you like to add a new task? (yes/no): ";
+        std::cin >> user_answer;
+
+        // Convert input to lowercase for consistency
+        user_answer = toLowerAndTrim(user_answer);
+
+        if (user_answer == "yes")
+        {
+            add_new_task();
+        }
+        else if (user_answer == "no")
+        {
+            std::cout << "Returning to the menu.\n";
+        }
+        else
+        {
+            std::cout << "Invalid input. Returning to the menu.\n";
+        }
+        return; // Exit the function after handling empty tasks
+    }
+
+    // Update task statuses before displaying
+    update_task_status();
+
+    // Display tasks in a formatted list
+    for (auto& task : tasks)
+    {
+        std::cout << "Task ID: " << task.id << "\n";
+        std::cout << "Title: " << task.title << "\n";
+        std::cout << "Description: " << task.description << "\n";
+        std::cout << "Due Date: " << task.due_date << "\n";
+        std::cout << "Status: " << Task::task_status_to_string(task.status) << "\n";
+        std::cout << "--------------------------" << std::endl;
+    }
+
+    // Save changes if statuses were updated
+    save_tasks();
+}
+
+void TaskManager::add_new_task()
+{
+    std::string title, description, due_date;
+    int step = 0; // Tracks the current step in the process
+    // clear_input();
+
+
+    while (true)
+    {
+        std::string input; // Temporary input buffer for all steps
+        std::string prompt;
+
+        switch (step)
+        {
+        case 0: // Input task title
+            prompt = "Enter task title (or 'q' to cancel): ";
+            input = get_valid_input(prompt);
+            if (go_back(input, "")) return; // Exit to menu if 'q' is entered
+            title = input; // Assign input to title
+            step++; // Proceed to the next step
+            continue;
+
+        case 1: // Input task description
+            prompt = "Enter task description (or 'q' to cancel): ";
+            input = get_valid_input(prompt);
+            if (go_back(input, ""))
+            {
+                step--; // Go back to the previous step
+                continue;
+            }
+            description = input; // Assign input to description
+            step++; // Proceed to the next step
+            continue;
+
+        case 2: // Input task due date
+            prompt = "Enter task due date (or 'q' to cancel): ";
+            input = get_valid_input(prompt);
+            if (go_back(input, ""))
+            {
+                step--; // Go back to the previous step
+                continue;
+            }
+
+            try
+            {
+                // Normalize and validate the due date
+                due_date = normalize_date(input);
+
+                // Add the task with the normalized date
+                add_task(title, description, due_date);
+                return; // Exit the function after successful addition
+            }
+            catch (const std::exception& e)
+            {
+                std::cerr << "Error: " << e.what() << ". Please re-enter the due date.\n";
+            }
+            continue;
+
+        default:
+            std::cerr << "Unexpected error occurred.\n";
+            return;
+        }
+    }
+}
 
 // Converts a TaskStatus enum value to its corresponding string representation.
 std::string Task::task_status_to_string(TaskStatus status) 
@@ -37,64 +271,42 @@ std::string Task::task_status_to_string(TaskStatus status)
 
 
 
-// Helper function to trim and convert a string to lowercase
-std::string toLowerAndTrim(const std::string& str) {
-    // Find the first and last non-whitespace characters
-    size_t start = str.find_first_not_of(" \t");
-    size_t end = str.find_last_not_of(" \t");
-
-    // If the string is entirely whitespace, return an empty string
-    if (start == std::string::npos) {
-        return "";
-    }
-
-    // Create a trimmed substring
-    std::string trimmed = str.substr(start, end - start + 1);
-
-    // Convert to lowercase
-    std::transform(trimmed.begin(), trimmed.end(), trimmed.begin(), ::tolower);
-
-    return trimmed;
-}
 
 bool TaskManager::ask_back_to_menu(const std::string& prompt)
 {
     while (true)
     {
-        std::string user_input;
-        std::cout << prompt << " (yes to proceed, no to go back to menu): ";
-        std::cin >> user_input;
+        try
+        {
+            std::cout << prompt << "(yes to proceed, no to go back to the menu): ";
 
-        // Convert input to lowercase to handle case-insensitive input
-        user_input = toLowerAndTrim(user_input);
+            
+            std::string user_input = get_valid_input("");
+            user_input = toLowerAndTrim(user_input);
 
-        if (user_input == "yes")
-        {
-            return false; // proceed with the action
+            if (user_input == "yes") return false; // Proceed
+            if (user_input == "no") return true;  // Go back to menu
+
+            std::cerr << "Invalid input. Please enter 'yes' or 'no'.\n";
         }
-        else if (user_input == "no")
+        catch (const std::exception& e)
         {
-            return true; // go back to the menu
-        }
-        else
-        {
-            std::cout << "Invalid input. Please enter 'yes' or 'no'.\n";
-            // Optionally, you can add a return statement here if you want to force the loop to continue asking for valid input.
+            std::cerr << "Error: " << e.what() << ". Please try again.\n";
         }
     }
 }
 
 
-
 std::string TaskManager::normalize_date(const std::string& input_date) const
 {
+    std::string upd_input_date = toLowerAndTrim(input_date);
     // Extract the current day, month, and year for validation
     int current_day = std::stoi(get_current_date().substr(0, 2));
     int current_month = std::stoi(get_current_date().substr(3, 2));
     int current_year = std::stoi(get_current_date().substr(6, 4));
 
     // Split the input date into day, month, and year
-    std::istringstream date_stream(input_date);
+    std::istringstream date_stream(upd_input_date);
     std::string day, month, year;
 
     std::getline(date_stream, day, '/');
@@ -181,156 +393,39 @@ std::string TaskManager::get_current_date() const
 
 
 
-// Display the greeting message and current date
-void TaskManager::display_greeting()
-{
-    std::cout << "Hello, I'm your Personal Task Manager." << std::endl;
-    std::cout << "Today's date: " << get_current_date() << std::endl;
-    std::cout << "Welcome!\n";
-}
-
-void TaskManager::display_menu()
-{
-
-    std::cout << "\n===== Task Manager Menu =====\n";
-    std::cout << "1. Display all tasks\n";
-    std::cout << "2. Add a new task\n";
-    std::cout << "3. Update task statuses\n";
-    std::cout << "4. Change task's status\n";
-    std::cout << "5. Edit task \n";
-    std::cout << "6. Delete task by its number\n";
-    std::cout << "7. Delete all tasks\n";
-    std::cout << "8. Exit\n";
-    std::cout << "=============================\n";
-
-}
 
 
-void TaskManager::display_tasks()
-{
-    std::cout << "Here are your tasks:\n" << std::endl;
 
-    // Check if there are any tasks
-    if (tasks.empty())
+bool TaskManager::go_back(const std::string& input, const std::string& prompt) {
+    if (!prompt.empty()) 
     {
-        std::string user_answer;
-        std::cout << "No tasks available. Would you like to add a new task? (yes/no): ";
-        std::cin >> user_answer;
-
-        // Convert input to lowercase for consistency
-        user_answer = toLowerAndTrim(user_answer);
-
-        if (user_answer == "yes")
-        {
-            add_new_task();
-        }
-        else if (user_answer == "no")
-        {
-            std::cout << "Returning to the menu.\n";
-        }
-        else
-        {
-            std::cout << "Invalid input. Returning to the menu.\n";
-        }
-        return; // Exit the function after handling empty tasks
+        std::cout << prompt;
     }
-
-    // Update task statuses before displaying
-    update_task_status();
-
-    // Display tasks in a formatted list
-    for (auto& task : tasks)
-    {
-        std::cout << "Task ID: " << task.id << "\n";
-        std::cout << "Title: " << task.title << "\n";
-        std::cout << "Description: " << task.description << "\n";
-        std::cout << "Due Date: " << task.due_date << "\n";
-        std::cout << "Status: " << Task::task_status_to_string(task.status) << "\n";
-        std::cout << "--------------------------" << std::endl;
-    }
-
-    // Save changes if statuses were updated
-    save_tasks();
+    // If input = "q", go back
+    return toLowerAndTrim(input) == "q";
 }
 
-bool TaskManager::go_back(std::string& input, const std::string& prompt)
+// Function to get valid input from the user
+std::string TaskManager::get_valid_input(const std::string& prompt) 
 {
-    std::getline(std::cin, input); // Get user input
-
-    // Check if the user wants to go back
-    if (toLowerAndTrim(input) == "q")
+    while (true) 
     {
-        std::cout << "Returning to the previous step...\n";
-        return true; // Signal to go back
-    }
+       
+        std::cout << prompt;
+        
+        std::string input;
+        std::getline(std::cin, input); // Get user input
 
-    return false; // Continue to the next step
-}
-
-void TaskManager::add_new_task()
-{
-    std::string title, description, due_date;
-    int step = 0; // Tracks the current step in the process
-
-    while (true)
-    {
-        std::string input; // Temporary input buffer for all steps
-        switch (step)
+        // Check for empty input
+        if (input.empty()) 
         {
-        case 0: // Input task title
-            std::cout << "Enter task title (or 'q' to cancel): ";
-            std::getline(std::cin, input);
-            if (go_back(input, "")) return; // Exit to menu if 'q' is entered
-            title = input; // Assign input to title
-            step++; // Proceed to the next step
+            std::cerr << "Error: Input cannot be empty. Please try again.\n";
             continue;
-
-        case 1: // Input task description
-            std::cout << "Enter task description (or 'q' to cancel): ";
-            std::getline(std::cin, input);
-            if (go_back(input, ""))
-            {
-                step--; // Go back to the previous step
-                continue;
-            }
-            description = input; // Assign input to description
-            step++; // Proceed to the next step
-            continue;
-
-        case 2: // Input task due date
-            std::cout << "Enter task due date (DD/MM/YYYY or 'q' to cancel): ";
-            std::getline(std::cin, input);
-            if (go_back(input, ""))
-            {
-                step--; // Go back to the previous step
-                continue;
-            }
-
-            try
-            {
-                // Normalize and validate the due date
-                due_date = normalize_date(input);
-
-                // Add the task with the normalized date
-                add_task(title, description, due_date);
-                std::cout << "Task added successfully!\n";
-                return; // Exit the function after successful addition
-            }
-            catch (const std::exception& e)
-            {
-                std::cerr << "Error: " << e.what() << ". Please re-enter the due date.\n";
-            }
-            continue;
-
-        default:
-            std::cerr << "Unexpected error occurred.\n";
-            return;
         }
+
+        return input; // Valid input received
     }
 }
-
-
-
 
 using json = nlohmann::json;
 
@@ -455,8 +550,6 @@ void TaskManager::add_task(const std::string& title, const std::string& descript
 }
 
 
-
-
 void TaskManager::delete_task(int task_id) 
 {
     // Find the task with the matching ID
@@ -498,7 +591,8 @@ nlohmann::json Task::to_json() const
 
 // Converts JSON data back to Task object with all necessary fields.
 // This static method is used to load tasks from JSON file format.
-Task Task::from_json(const nlohmann::json& j) {
+Task Task::from_json(const nlohmann::json& j) 
+{
     Task task;
 
     task.id = j.at("id").get<int>();
@@ -603,8 +697,7 @@ void TaskManager::change_task_status()
         {
             // Handle invalid input
             std::cerr << "Invalid input. Please enter a valid numeric task ID.\n";
-            std::cin.clear(); // Clear the error state
-            std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n'); // Discard invalid input
+            clear_input();
             continue;
         }
 
@@ -630,8 +723,8 @@ void TaskManager::change_task_status()
         while (true)
         {
             std::cout << "Enter new status (Pending, Completed): ";
-            std::cin.clear();
-            std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+            clear_input();
+
             std::getline(std::cin, new_status);  
 
             if (toLowerAndTrim(new_status) == "q")
@@ -639,7 +732,6 @@ void TaskManager::change_task_status()
                 std::cout << "Returning back.\n";
                 break;
             }
-
 
             if (new_status == "pending" || new_status == "completed")
             {
@@ -660,10 +752,6 @@ void TaskManager::change_task_status()
     }
 }
 
-
-
-
-
 Task& TaskManager::get_task_by_number(int task_number) 
 {
 
@@ -680,219 +768,296 @@ std::string TaskManager::get_and_validate_due_date()
 {
     while (true) 
     {
-        std::cout << "Enter new due date (DD/MM/YYYY or DD/MM/YY). Enter q to go back: ";
-        std::string new_due_date;
-
-        std::getline(std::cin, new_due_date);
+        std::string prompt =  "Enter new due date (DD/MM/YYYY or DD/MM/YY). Enter q to go back: ";
+        
+        std::string new_due_date = get_valid_input(prompt);
 
         // Check if the user wants to cancel and go back
-        if (go_back(new_due_date, ""))
-            break;
+        if (go_back(new_due_date, "")) {
+            std::cout << "Date update canceled.\n";
+            return ""; // Return empty string to indicate cancellation
+        }
         try 
         {
+            std::string normalized_date = normalize_date(new_due_date);
+            std::cout << "Date updated successfully to: " << normalized_date << "\n";
             return normalize_date(new_due_date); // Validate and normalize the date
         }
         catch (const std::invalid_argument& e) 
         {
             std::cerr << "Error: " << e.what() << " Please try again.\n";
         }
+       
     }
-    return ""; // Return empty string if user decided to go back
 }
 
-TaskStatus TaskManager::get_and_update_status()
+
+TaskStatus TaskManager::get_and_update_status(const std::string& prompt, const std::string& current_value)
 {
+    std::string current_status = current_value;
+
     while (true)
     {
         std::string new_status;
-        std::cout << "Enter new status (Pending, Completed). Enter q to go back: ";
+        std::cout << prompt;
 
-
-        std::getline(std::cin, new_status);
+        // Read and preprocess input
+        new_status = get_valid_input(prompt);
         new_status = toLowerAndTrim(new_status);
-        // Check if the user wants to cancel and go back
-        //if (new_status == "q")
-        //{
-        //    std::cout << "Returning back.\n";
-        //    
-        //}
-        if (go_back(new_status, ""))
-            return TaskStatus::Pending;
 
-        if (new_status == "pending" || new_status == "completed")
+        // Check if the user wants to go back
+        if (go_back(new_status, ""))
         {
-            try
-            {
-                return Task::stringToTaskStatus(new_status); // Return valid status
-            }
-            catch (const std::invalid_argument& e)
-            {
-                std::cerr << "Error: " << e.what() << ". Please enter a valid status (Pending, Completed).\n";
-            }
+            std::cout << "Returning to previous step.\n";
+            return Task::stringToTaskStatus(current_status);
         }
-        else if (new_status == "expired")
+
+        // Explicitly handle "expired" as an invalid input
+        if (new_status == "expired")
         {
             std::cerr << "Error: The 'Expired' status is set automatically when the task deadline is missed.\n";
+            continue; // Ask for input again
+        }
+
+        // Attempt to convert input to TaskStatus
+        try
+        {
+            TaskStatus updated_status = Task::stringToTaskStatus(new_status);
+            std::cout << "Task status successfully updated to " << new_status << ".\n";
+            return updated_status; // Return valid status
+        }
+        catch (const std::invalid_argument& e)
+        {
+            std::cerr << "Error: " << e.what() << ". Please enter a valid status (Pending, Completed).\n";
+        }
+        catch (...)
+        {
+            std::cerr << "An unknown error occurred. Please try again.\n";
         }
     }
 }
 
 
 
-// Function to get and update task title or description
-//std::string TaskManager::get_and_update_input(const std::string& prompt)
+//std::string TaskManager::get_and_update_input(const std::string& prompt, const std::string& current_value)
 //{
 //    while (true)
 //    {
 //        std::string input;
+//        std::cout << prompt; // Display the prompt to the user
+//                 
+//        std::getline(std::cin, input); // Take user input
 //
-//        std::getline(std::cin, input);
+//        if (go_back(input, "")) {
+//            std::cout << "Returning back...\n";
+//            return current_value; // Return the current value if the user cancels
+//        }
 //
-//        // Check if the user wants to cancel
-//        //if (toLowerAndTrim(input) == "q")
-//        //{
-//        //    std::cout << "Returning back.\n";
-//        //    return ""; // Return an empty string to indicate cancellation
-//        //}
-//        if (go_back(input, ""))
-//            return "";
-//            
-//
-//        // Ensure input is not empty
-//        if (input.empty())
-//        {
+//        if (input.empty()) {
 //            std::cerr << "Error: Input cannot be empty. Please try again.\n";
 //            continue;
 //        }
 //
+//        std::cout << "Task has been successfully updated.\n";
 //        return input; // Return valid input
 //    }
 //}
 
-std::string TaskManager::get_and_update_input(const std::string& prompt, const std::string& current_value) {
-    while (true)
-    {
-        std::cout << prompt; // Display the prompt to the user
-        std::string input;
-
-        std::getline(std::cin, input);
+std::string TaskManager::get_and_update_input(const std::string& prompt, const std::string& current_value) 
+{
+    while (true) {
+        std::string input = get_valid_input(prompt);
 
         if (go_back(input, "")) {
-            std::cout << "Returning to the previous value.\n";
-            return current_value; // Return the previous value instead of an empty string
+            return current_value; // Return current value if user exits
         }
 
-        if (input.empty()) {
-            std::cerr << "Error: Input cannot be empty. Please try again.\n";
-            continue;
-        }
-
-        return input; // Return valid input
+        return input; // Valid input received
     }
 }
 
 
+//void TaskManager::edit_task() 
+//{
+//    
+//    if (tasks.empty()) 
+//    {
+//        std::cout << "No tasks available to edit.\n";
+//        return;
+//    }
+//
+//    try 
+//    {
+//        int task_number;
+//        std::cout << "Enter the number of the task you want to edit (0 to go back): ";
+//        clear_input();
+//        std::cin >> task_number;
+//        
+//        
+//        if (task_number == 0) return;
+//        
+//        Task& task = get_task_by_number(task_number);
+//
+//        // Display the selected task's details
+//        std::cout << "Editing Task #" << task_number << ":\n";
+//        std::cout << "Title: " << task.title << "\n";
+//        std::cout << "Description: " << task.description << "\n";
+//        std::cout << "Due Date: " << task.due_date << "\n";
+//        std::cout << "Status: " << Task::task_status_to_string(task.status) << "\n";
+//
+//        bool editing = true;
+//
+//        while (editing) 
+//        {
+//            std::cout << "\nWhat would you like to edit?\n";
+//            std::cout << "1. Title\n";
+//            std::cout << "2. Description\n";
+//            std::cout << "3. Due Date\n";
+//            std::cout << "4. Status\n";
+//            std::cout << "5. Finish editing\n";
+//            std::cout << "Choose an option: ";
+//
+//            int option; 
+//
+//            std::cin >> option;
+//
+//            switch (option) 
+//            {
+//            case 1:
+//            {
+//                task.title = get_and_update_input("Enter new title (q to go back): ", task.title);                
+//                continue;
+//            }
+//            case 2:
+//            {
+//                task.description = get_and_update_input("Enter new description (q to go back): ", task.description);                
+//                continue;
+//            }
+//            case 3: 
+//            {
+//                std::string new_due_date = get_and_validate_due_date();
+//                if (new_due_date.empty()) 
+//                {
+//                    continue; 
+//                }
+//                task.due_date = new_due_date;                
+//                continue;
+//            }
+//            case 4: {
+//                task.status = get_and_update_status("Enter new status (Pending, Completed). Enter q to go back: ", Task::task_status_to_string(task.status));
+//                save_tasks(); // Save changes to file                
+//                continue;;
+//            }
+//            case 5: 
+//            {
+//                editing = false;
+//                std::cout << "Finished editing task.\n";
+//                return;
+//            }
+//            default:
+//                std::cout << "Invalid option. Please try again.\n";
+//                continue;
+//            }
+//        }
+//    }
+//    catch (const std::out_of_range& e) {
+//        std::cerr << "Error: " << e.what() << " Please try again.\n";
+//    }
+//    catch (const std::invalid_argument& e) {
+//        std::cerr << "Invalid input: " << e.what() << "\n";
+//    }
+//    catch (const std::exception& e) {
+//        std::cerr << "An unexpected error occurred: " << e.what() << "\n";
+//    }
+//}
 
-
-
-void TaskManager::edit_task() 
+void TaskManager::edit_task()
 {
-    
-    if (tasks.empty()) 
+    if (tasks.empty())
     {
         std::cout << "No tasks available to edit.\n";
         return;
     }
 
-    try 
+
+    int task_number;
+    std::cout << "Enter the number of the task you want to edit (0 to go back): ";
+
+    // clear_input(); // Clear any leftover input
+
+    std::cin >> task_number;
+
+    // If the user enters 0, go back to the previous menu
+    if (task_number == 0) return;
+
+    // Get the task by its number
+    Task& task = get_task_by_number(task_number);
+
+    // Display the selected task's details
+    std::cout << "Editing Task #" << task_number << ":\n";
+    std::cout << "Title: " << task.title << "\n";
+    std::cout << "Description: " << task.description << "\n";
+    std::cout << "Due Date: " << task.due_date << "\n";
+    std::cout << "Status: " << Task::task_status_to_string(task.status) << "\n";
+
+    while (true)
     {
-        int task_number;
-        std::cout << "Enter the number of the task you want to edit (0 to go back): ";
-        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-        std::cin >> task_number;
-        
-        
-        if (task_number == 0) return;
-        
-        Task& task = get_task_by_number(task_number);
+        std::cout << "\nWhat would you like to edit?\n";
+        std::cout << "1. Title\n";
+        std::cout << "2. Description\n";
+        std::cout << "3. Due Date\n";
+        std::cout << "4. Status\n";
+        std::cout << "5. Finish editing\n";
+        std::cout << "Choose an option: ";
 
-        // Display the selected task's details
-        std::cout << "Editing Task #" << task_number << ":\n";
-        std::cout << "Title: " << task.title << "\n";
-        std::cout << "Description: " << task.description << "\n";
-        std::cout << "Due Date: " << task.due_date << "\n";
-        std::cout << "Status: " << Task::task_status_to_string(task.status) << "\n";
+        int option;
+        std::cin >> option;
 
-        bool editing = true;
+        // Clear input buffer before processing
+        clear_input();
 
-        while (editing) 
-        {
-            std::cout << "\nWhat would you like to edit?\n";
-            std::cout << "1. Title\n";
-            std::cout << "2. Description\n";
-            std::cout << "3. Due Date\n";
-            std::cout << "4. Status\n";
-            std::cout << "5. Finish editing\n";
-            std::cout << "Choose an option: ";
-
-            int option; 
+        if (std::cin.fail()) {
+            std::cin.clear();
             std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-            std::cin >> option;
-            
+            std::cerr << "Invalid input. Please enter a valid option.\n";
+            continue;
+        }
 
+        switch (option)
+        {
+        case 1:
+            task.title = get_and_update_input("Enter new title (q to go back): ", task.title);
+            continue;
 
-            switch (option) 
-            {
-            case 1:
-            {
-                task.title = get_and_update_input("Enter new title (q to go back): ", task.title);
-                std::cout << "Title updated successfully.\n";
-                continue;
-            }
-            case 2:
-            {
-                task.description = get_and_update_input("Enter new description (q to go back): ", task.description);
-                std::cout << "Description updated successfully.\n";
-                continue;
-            }
-            case 3: 
-            {
-                std::string new_due_date = get_and_validate_due_date();
-                if (new_due_date.empty()) 
-                {
-                    continue; 
-                }
-                task.due_date = new_due_date;
-                std::cout << "Due date updated successfully.\n";
-                continue;
-            }
-            case 4: {
-                task.status = get_and_update_status();
-                save_tasks(); // Save changes to file
-                std::cout << "Task status updated successfully.\n";
-                continue;;
-            }
-            case 5: {
-                editing = false;
-                std::cout << "Finished editing task.\n";
-                continue;;
-            }
-            default:
-                std::cout << "Invalid option. Please try again.\n";
-                continue;
-            }
+        case 2:
+            task.description = get_and_update_input("Enter new description (q to go back): ", task.description);
+            continue;
+
+        case 3:
+            task.due_date = get_and_validate_due_date();
+            continue;
+
+        case 4:
+            task.status = get_and_update_status(
+                "Enter new status (Pending, Completed). Enter q to go back: ",
+                Task::task_status_to_string(task.status)
+            );
+            continue;
+
+        case 5:
+            std::cout << "Finished editing task.\n";
+            return;
+
+        default:
+            std::cerr << "Invalid option. Please try again.\n";
+            continue;
         }
     }
-    catch (const std::out_of_range& e) {
-        std::cerr << "Error: " << e.what() << " Please try again.\n";
-    }
-    catch (const std::invalid_argument& e) {
-        std::cerr << "Invalid input: " << e.what() << "\n";
-    }
-    catch (const std::exception& e) {
-        std::cerr << "An unexpected error occurred: " << e.what() << "\n";
-    }
 }
+
+
+
+
 
 
 void TaskManager::delete_task()
@@ -909,8 +1074,7 @@ void TaskManager::delete_task()
         // Check for invalid input (non-numeric or other errors)
         if (std::cin.fail())
         {
-            std::cin.clear(); // clear error flag
-            std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n'); // discard invalid input
+            clear_input(); // clear cin buffer
             std::cout << "Invalid input. Please enter a valid task ID.\n";
             continue; // ask for input again
         }
@@ -952,69 +1116,3 @@ void TaskManager::delete_all_tasks()
     std::cout << "All tasks have been deleted successfully.\n";
 }
 
-void TaskManager::run()
-{
-    bool running = true;
-
-    display_greeting();
-    display_tasks();
-
-    while (running)
-    {
-        display_menu();
-
-        std::cout << "Choose an option: ";
-        int choice;
-        std::cin >> choice;
-
-        // Validate input errors
-        if (std::cin.fail())
-        {
-            std::cin.clear();
-            std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-            std::cerr << "Invalid input. Please enter a valid number.\n";
-            continue;
-        }
-
-        switch (choice)
-        {
-        case 1:
-            display_tasks();
-            break;
-        case 2:
-            if (!ask_back_to_menu("Do you want to add a new task?"))
-                add_new_task();
-            break;
-        case 3:
-            if (!ask_back_to_menu("Do you want to update all task statuses? "))
-                update_task_status();
-            break;
-        case 4:
-            if (!ask_back_to_menu("Do you want to change task status? "))
-                change_task_status();
-            break;
-        case 5:
-            if (!ask_back_to_menu("Do you want to edit task parameters by its number?"))
-                edit_task();
-            break;
-        case 6:
-            if (!ask_back_to_menu("Do you want to delete a task by its number?"))
-                delete_task();
-            break;
-        case 7:
-            if (!ask_back_to_menu("Do you want to delete all tasks?"))
-                delete_all_tasks();
-            break;
-        case 8:
-            if (!ask_back_to_menu("Do you want to exit the program?"))
-            {
-                running = false;
-                std::cout << "Exiting Personal Task Manager. Goodbye!\n";
-            }
-            break;
-        default:
-            std::cerr << "Invalid input. Please enter a number from the menu.\n";
-            break;
-        }
-    }
-}
