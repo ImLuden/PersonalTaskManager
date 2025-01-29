@@ -5,11 +5,7 @@ set(CMAKE_TOOLCHAIN_FILE "F:/vcpkg/scripts/buildsystems/vcpkg.cmake")
 set(PROJECT_NAME PersonalTaskManager)
 project(${PROJECT_NAME})
 
-add_executable(${PROJECT_NAME} src/main.cpp  
-		src/task_manager.cpp  
-		src/task_manager.h
-		src/struct_task.cpp
-		src/utils.cpp)
+add_executable(${PROJECT_NAME} src/main.cpp  src/task_manager.cpp  src/task_manager.h)
 
 
 find_package(nlohmann_json CONFIG REQUIRED)

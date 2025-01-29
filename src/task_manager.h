@@ -15,6 +15,7 @@
 // Helper function to trim (to avoid spaces) and convert a string to lowercase
 std::string toLowerAndTrim(const std::string& str);
 
+
 // Enum that defines the task status. 
 // Pending - task is newly created; Completed - task was marked as done by user; Expired - due date passed without completion.
 enum class TaskStatus { Pending, Completed, Expired };
@@ -99,7 +100,7 @@ private:
     std::vector<Task> tasks; // Stores all tasks in memory for quick access and manipulation
     std::string db_file; // Path to the JSON file storing task data   
 
-    bool go_back(const std::string& input);
+    bool go_back(const std::string& input, const std::string& prompt);
 
     // Loads tasks from a JSON database file into memory (called in the constructor).
     void load_tasks();
@@ -119,16 +120,16 @@ private:
     // Validates date type (should be DD/MM/YYYY)
     std::string normalize_date(const std::string& input_date) const;
 
-    // Validates input (prevents from empty input)
+    // Validates input 
+
     std::string get_valid_input(const std::string& prompt);
 
     // Validates date and its timeline
+
     std::string get_and_validate_due_date();
 
-    // For status update via edit_task function
     TaskStatus get_and_update_status(const std::string& prompt, const std::string& current_value);
 
-    // For title and description update via edit_task_function
     std::string get_and_update_input(const std::string& prompt, const std::string& current_value);
 
 };
